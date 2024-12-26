@@ -1,8 +1,26 @@
 'use client'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
 
 export default function Hero() {
+  const [userName, setUserName] = useState(null)
+
+  useEffect(() => {
+    const storedUserName = localStorage.getItem('userName')
+    if (storedUserName) {
+      setUserName(storedUserName)
+    }
+
+    const handleStorage = () => {
+      const currentUserName = localStorage.getItem('userName')
+      setUserName(currentUserName)
+    }
+
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
+
   return (
     <section className="relative bg-gradient-to-b from-blue-100 to-white pt-32 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
       <motion.div 
@@ -47,7 +65,7 @@ export default function Hero() {
           Présentez vos projets et compétences avec style
         </motion.p>
         <motion.div 
-          className="flex flex-col sm:flex-row justify-center gap-4"
+          className="flex flex-col sm:flex-row justify-center gap-4 mb-8"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
@@ -59,6 +77,17 @@ export default function Hero() {
             Contact
           </Link>
         </motion.div>
+        {userName && (
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+            className="text-3xl font-extrabold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent drop-shadow-lg mt-8"
+          >
+            Bienvenue, {userName}
+          </motion.h2>
+        )}
       </div>
       <motion.div 
         className="absolute bottom-0 left-0 right-0"

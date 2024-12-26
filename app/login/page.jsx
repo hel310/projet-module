@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Github, Facebook, Linkedin, ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import axios from 'axios'
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true)
@@ -12,13 +13,48 @@ export default function Login() {
     email: '',
     password: ''
   })
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   const router = useRouter()
 
-  const handleSubmit = (e) => {
+  const isValidEmail = (email) => {
+    const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return re.test(String(email).toLowerCase());
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Handle form submission
-    console.log('Form submitted:', formState)
+    setError('')
+    setSuccess('')
+
+    if (!isValidEmail(formState.email)) {
+      setError('Veuillez entrer une adresse email valide')
+      return
+    }
+
+    if (!isLogin && formState.name.trim().length < 2) {
+      setError('Le nom doit contenir au moins 2 caractères')
+      return
+    }
+
+    if (formState.password.length < 6) {
+      setError('Le mot de passe doit contenir au moins 6 caractères')
+      return
+    }
+
+    try {
+      const endpoint = isLogin ? '/api/users/login' : '/api/users/register'
+      const { data } = await axios.post(`http://localhost:5000${endpoint}`, formState)
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('userName', data.name)
+      setSuccess(isLogin ? 'Connexion réussie!' : 'Inscription réussie!')
+      setTimeout(() => {
+        router.push('/')
+      }, 2000)
+    } catch (error) {
+      setError(error.response?.data?.message || 'Une erreur est survenue')
+    }
   }
 
   const handleChange = (e) => {
@@ -166,6 +202,26 @@ export default function Login() {
                     >
                       {isLogin ? "Se connecter" : "S'inscrire"}
                     </button>
+                    {error && (
+                      <motion.p 
+                        className="text-red-500 text-center bg-red-100 border border-red-400 rounded-md p-2"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {error}
+                      </motion.p>
+                    )}
+                    {success && (
+                      <motion.p 
+                        className="text-green-500 text-center bg-green-100 border border-green-400 rounded-md p-2"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {success}
+                      </motion.p>
+                    )}
                   </form>
                 </motion.div>
               </AnimatePresence>
@@ -208,4 +264,5 @@ export default function Login() {
     </div>
   )
 }
+
 

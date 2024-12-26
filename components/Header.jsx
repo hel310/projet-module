@@ -1,11 +1,28 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
+  const [userName, setUserName] = useState(null)
+  const router = useRouter()
+
+  useEffect(() => {
+    const storedUserName = localStorage.getItem('userName')
+    if (storedUserName) {
+      setUserName(storedUserName)
+    }
+  }, [])
+
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('userName')
+    setUserName(null)
+    router.push('/login')
+  }
 
   return (
     <motion.header 
@@ -29,9 +46,15 @@ export default function Header() {
             <Link href="/contact" className="text-blue-600 hover:text-blue-700 transition-colors">
               Contact
             </Link>
-            <Link href="/login" className="text-blue-600 hover:text-blue-700 transition-colors">
-              Se connecter
-            </Link>
+            {userName ? (
+              <button onClick={handleLogout} className="text-blue-600 hover:text-blue-700 transition-colors">
+                Se déconnecter
+              </button>
+            ) : (
+              <Link href="/login" className="text-blue-600 hover:text-blue-700 transition-colors">
+                Se connecter
+              </Link>
+            )}
           </nav>
           <div className="md:hidden">
             <button
@@ -40,7 +63,7 @@ export default function Header() {
             >
               <svg className="h-6 w-6 fill-current" viewBox="0 0 24 24">
                 {isOpen ? (
-                  <path fillRule="evenodd" clipRule="evenodd" d="M18.278 16.864a1 1 0 0 1-1.414 1.414l-4.829-4.828-4.828 4.828a1 1 0 0 1-1.414-1.414l4.828-4.829-4.828-4.828a1 1 0 0 1 1.414-1.414l4.829 4.828 4.828-4.828a1 1 0 1 1 1.414 1.414l-4.828 4.829 4.828 4.828z" />
+                  <path fillRule="evenodd" clipRule="evenodd" d="M18.278 16.864a1 1 0 0 1-1.414 1.414l-4.829-4.828-4.828 4.828a1 1 0 0 1-1.414-1.414l4.828-4.829-4.828-4.828a1 1 0 0 1 1.414-1.414l4.829 4.828 4.828 4.828z" />
                 ) : (
                   <path fillRule="evenodd" d="M4 5h16a1 1 0 0 1 0 2H4a1 1 0 1 1 0-2zm0 6h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2zm0 6h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2z" />
                 )}
@@ -78,4 +101,5 @@ export default function Header() {
     </motion.header>
   )
 }
+
 
