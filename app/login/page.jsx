@@ -64,6 +64,21 @@ export default function Login() {
     })
   }
 
+  const clearForm = () => {
+    setFormState({
+      name: '',
+      email: '',
+      password: ''
+    })
+    setError('')
+    setSuccess('')
+  }
+
+  const toggleMode = () => {
+    setIsLogin(!isLogin)
+    clearForm()
+  }
+
   useEffect(() => {
     const handleMouseMove = (e) => {
       const shapes = document.querySelectorAll('.bg-shape')
@@ -250,7 +265,7 @@ export default function Login() {
                       : "Connectez-vous pour continuer votre voyage avec nous"}
                   </p>
                   <button
-                    onClick={() => setIsLogin(!isLogin)}
+                    onClick={toggleMode}
                     className="py-3 px-6 rounded-lg border-2 border-white text-white font-semibold hover:bg-white/10 transition-colors"
                   >
                     {isLogin ? "S'inscrire" : "Se connecter"}
@@ -264,5 +279,6 @@ export default function Login() {
     </div>
   )
 }
+
 
 
