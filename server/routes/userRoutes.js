@@ -10,7 +10,7 @@ router.post('/register', async (req, res) => {
     const { name, email, password } = req.body;
     let user = await User.findOne({ email });
     if (user) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: 'Utilisateur existe déja!' });
     }
     const hashedPassword = await bcrypt.hash(password, 12);
     user = new User({ name, email, password: hashedPassword });
@@ -27,11 +27,11 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: 'User not found' });
+      return res.status(400).json({ message: 'Utilisateur non trouvé' });
     }
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      return res.status(400).json({ message: 'Mot de passe incorrect!!' });
     }
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
     res.json({ token, userId: user._id, name: user.name });
