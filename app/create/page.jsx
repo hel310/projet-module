@@ -5,35 +5,46 @@ import { motion } from 'framer-motion'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { Send } from 'lucide-react'
+import axios from 'axios'
 
 export default function Create() {
   const [messages, setMessages] = useState([
     { type: 'bot', content: "Bonjour ! Je suis là pour vous aider à créer votre portfolio. Comment puis-je vous assister aujourd'hui ?" }
   ])
   const [input, setInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (input.trim()) {
-      setMessages([...messages, { type: 'user', content: input }])
+      setMessages(prev => [...prev, { type: 'user', content: input }])
+      const userInput = input
       setInput('')
-      // Simulate bot response
-      setTimeout(() => {
-        setMessages(prev => [...prev, { type: 'bot', content: getBotResponse(input) }])
-      }, 1000)
-    }
-  }
+      setIsLoading(true)
 
-  const getBotResponse = (message) => {
-    const lowerMessage = message.toLowerCase()
-    if (lowerMessage.includes('commencer') || lowerMessage.includes('débuter')) {
-      return "Excellent ! Commençons par choisir un modèle pour votre portfolio. Préférez-vous un design minimaliste ou plus créatif ?"
-    } else if (lowerMessage.includes('minimaliste')) {
-      return "Un design minimaliste est parfait pour mettre en valeur votre travail. Commençons par ajouter vos informations personnelles et vos projets les plus importants. Quelles sont vos principales compétences ?"
-    } else if (lowerMessage.includes('créatif')) {
-      return "Un design créatif peut vraiment faire ressortir votre personnalité. Parlons des couleurs et des éléments graphiques qui représentent le mieux votre style. Quelles sont vos couleurs préférées ?"
-    } else {
-      return "Je comprends. Pouvez-vous me donner plus de détails sur ce que vous recherchez pour votre portfolio ? Je suis là pour vous guider à chaque étape."
+      try {
+        const response = await axios.post('/api/ask', { 
+          message: userInput 
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        })
+
+        if (response.data && response.data.response) {
+          setMessages(prev => [...prev, { type: 'bot', content: response.data.response }])
+        } else {
+          throw new Error('Invalid response format')
+        }
+      } catch (error) {
+        console.error('Error fetching bot response:', error)
+        setMessages(prev => [...prev, { 
+          type: 'bot', 
+          content: "Désolé, une erreur s'est produite. Veuillez réessayer." 
+        }])
+      } finally {
+        setIsLoading(false)
+      }
     }
   }
 
@@ -95,6 +106,18 @@ export default function Create() {
                 </div>
               </motion.div>
             ))}
+            {isLoading && (
+              <motion.div
+                className="flex justify-start"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="max-w-xs lg:max-w-md px-4 py-2 rounded-lg bg-blue-100 text-blue-900">
+                  Réflexion en cours...
+                </div>
+              </motion.div>
+            )}
           </div>
           <form onSubmit={handleSubmit} className="p-4 border-t border-blue-100">
             <div className="flex items-center">
@@ -104,10 +127,12 @@ export default function Create() {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Tapez votre message..."
                 className="flex-grow px-4 py-2 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white bg-opacity-50"
+                disabled={isLoading}
               />
               <button
                 type="submit"
-                className="bg-blue-600 text-white px-4 py-2 rounded-r-lg hover:bg-blue-700 transition-colors"
+                className="bg-blue-600 text-white px-4 py-2 rounded-r-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                disabled={isLoading}
               >
                 <Send className="h-5 w-5" />
               </button>
@@ -119,4 +144,10 @@ export default function Create() {
     </div>
   )
 }
+
+
+
+
+
+
 
