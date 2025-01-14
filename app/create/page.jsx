@@ -1,18 +1,80 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { Send } from 'lucide-react'
+import { Send, User, Bot } from 'lucide-react'
 import axios from 'axios'
 
 export default function Create() {
+  const [userName, setUserName] = useState(null)
+
+  useEffect(() => {
+    const storedUserName = localStorage.getItem('userName')
+    if (storedUserName) {
+      setUserName(storedUserName)
+    }
+
+    const handleStorage = () => {
+      const currentUserName = localStorage.getItem('userName')
+      setUserName(currentUserName)
+    }
+
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
+
   const [messages, setMessages] = useState([
-    { type: 'bot', content: "Bonjour ! Je suis là pour vous aider à créer votre portfolio. Comment puis-je vous assister aujourd'hui ?" }
+    { 
+      type: 'bot', 
+      content: userName 
+        ? `Bonjour ${userName} ! Je suis là pour vous aider à créer votre portfolio. Comment puis-je vous assister aujourd'hui ?`
+        : "Bonjour ! Je suis là pour vous aider à créer votre portfolio. Comment puis-je vous assister aujourd'hui ?"
+    }
   ])
+
+  useEffect(() => {
+    setMessages([
+      { 
+        type: 'bot', 
+        content: userName 
+          ? `Bonjour ${userName} ! Je suis là pour vous aider à créer votre portfolio. Comment puis-je vous assister aujourd'hui ?`
+          : "Bonjour ! Je suis là pour vous aider à créer votre portfolio. Comment puis-je vous assister aujourd'hui ?"
+      }
+    ])
+  }, [userName])
+
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const chatContainerRef = useRef(null)
+  const inputRef = useRef(null)
+
+
+  const scrollToNewMessage = () => {
+    if (chatContainerRef.current) {
+      const lastMessage = chatContainerRef.current.lastElementChild;
+      if (lastMessage) {
+        const scrollOptions = {
+          top: lastMessage.offsetTop - 20,
+          behavior: 'smooth'
+        };
+        chatContainerRef.current.scrollTo(scrollOptions);
+      }
+    }
+  }
+
+  const focusInput = () => {
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 0);
+  };
+
+  useEffect(() => {
+    scrollToNewMessage()
+  }, [messages, userName])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -32,7 +94,11 @@ export default function Create() {
         })
 
         if (response.data && response.data.response) {
-          setMessages(prev => [...prev, { type: 'bot', content: response.data.response }])
+          setMessages(prev => {
+            const newMessages = [...prev, { type: 'bot', content: response.data.response }];
+            focusInput();
+            return newMessages;
+          });
         } else {
           throw new Error('Invalid response format')
         }
@@ -71,11 +137,11 @@ export default function Create() {
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 overflow-hidden">
       <Header />
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="bg-shape absolute top-1/3 right-1/4 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob" data-x="-40" data-y="40"></div>
-        <div className="bg-shape absolute bottom-1/3 left-1/4 w-80 h-80 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000" data-x="40" data-y="-40"></div>
-        <div className="bg-shape absolute top-2/3 right-1/2 w-72 h-72 bg-blue-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000" data-x="-30" data-y="30"></div>
+        <div className="bg-shape absolute top-0 left-0 w-64 h-64 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob" style={{top: '-32px', left: '-32px'}} data-x="20" data-y="20"></div>
+        <div className="bg-shape absolute top-0 right-0 w-96 h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000" style={{top: '-48px', right: '-48px'}} data-x="-20" data-y="20"></div>
+        <div className="bg-shape absolute bottom-0 left-0 w-96 h-96 bg-blue-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000" style={{bottom: '-48px', left: '-48px'}} data-x="20" data-y="-20"></div>
       </div>
-      <main className="flex-grow container mx-auto px-4 py-8 mt-16 relative z-10">
+      <main className="flex-grow container mx-auto px-4 py-8 pb-16 mt-16 relative z-10">
         <motion.h1 
           className="text-3xl font-bold text-center mb-8 text-blue-900"
           initial={{ opacity: 0, y: -20 }}
@@ -85,24 +151,44 @@ export default function Create() {
           Créez votre portfolio avec notre assistant
         </motion.h1>
         <motion.div 
-          className="bg-white bg-opacity-80 backdrop-filter backdrop-blur-lg shadow-lg rounded-lg overflow-hidden max-w-2xl mx-auto relative"
+          className="max-w-3xl mx-auto bg-white bg-opacity-80 backdrop-filter backdrop-blur-lg shadow-lg rounded-lg overflow-hidden flex flex-col h-[calc(100vh-300px)]"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <div className="h-96 overflow-y-auto p-4 space-y-4">
+          <div 
+            ref={chatContainerRef}
+            className="flex-grow overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-blue-500 scrollbar-track-blue-100"
+          >
             {messages.map((message, index) => (
               <motion.div
-                key={index}
+                key={`message-${index}`}
                 className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                  message.type === 'user' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-900'
+                <div className={`flex items-start space-x-2 max-w-[80%] ${
+                  message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''
                 }`}>
-                  {message.content}
+                  <div className={`p-2 rounded-full ${
+                    message.type === 'user' ? 'bg-blue-500' : 'bg-gray-200'
+                  }`}>
+                    {message.type === 'user' ? (
+                      <User className="w-5 h-5 text-white" />
+                    ) : (
+                      <Bot className="w-5 h-5 text-gray-600" />
+                    )}
+                  </div>
+                  <div className={`p-3 rounded-lg ${
+                    message.type === 'user' ? 'bg-blue-100 text-blue-900' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {message.type === 'bot' ? (
+                      <div className="whitespace-pre-wrap">{message.content}</div>
+                    ) : (
+                      message.content
+                    )}
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -113,28 +199,34 @@ export default function Create() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="max-w-xs lg:max-w-md px-4 py-2 rounded-lg bg-blue-100 text-blue-900">
-                  Réflexion en cours...
+                <div className="flex items-center space-x-2">
+                  <div className="p-2 rounded-full bg-gray-200">
+                    <Bot className="w-5 h-5 text-gray-600" />
+                  </div>
+                  <div className="p-3 rounded-lg bg-gray-100 text-gray-800">
+                    Réflexion en cours...
+                  </div>
                 </div>
               </motion.div>
             )}
           </div>
-          <form onSubmit={handleSubmit} className="p-4 border-t border-blue-100">
-            <div className="flex items-center">
+          <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
+            <div className="flex items-center space-x-2">
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Tapez votre message..."
-                className="flex-grow px-4 py-2 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white bg-opacity-50"
+                className="flex-grow px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white bg-opacity-50"
                 disabled={isLoading}
+                ref={inputRef}
               />
               <button
                 type="submit"
-                className="bg-blue-600 text-white px-4 py-2 rounded-r-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
                 disabled={isLoading}
               >
-                <Send className="h-5 w-5" />
+                <Send className="w-5 h-5" />
               </button>
             </div>
           </form>
@@ -144,6 +236,38 @@ export default function Create() {
     </div>
   )
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
