@@ -25,14 +25,7 @@ export default function Create() {
     return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
-  const [messages, setMessages] = useState([
-    { 
-      type: 'bot', 
-      content: userName 
-        ? `Bonjour ${userName} ! Je suis là pour vous aider à créer votre portfolio. Comment puis-je vous assister aujourd'hui ?`
-        : "Bonjour ! Je suis là pour vous aider à créer votre portfolio. Comment puis-je vous assister aujourd'hui ?"
-    }
-  ])
+  const [messages, setMessages] = useState([])
 
   useEffect(() => {
     setMessages([
@@ -49,7 +42,6 @@ export default function Create() {
   const [isLoading, setIsLoading] = useState(false)
   const chatContainerRef = useRef(null)
   const inputRef = useRef(null)
-
 
   const scrollToNewMessage = () => {
     if (chatContainerRef.current) {
@@ -79,14 +71,16 @@ export default function Create() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (input.trim()) {
-      setMessages(prev => [...prev, { type: 'user', content: input }])
+      const newUserMessage = { type: 'user', content: input }
+      setMessages(prev => [...prev, newUserMessage])
       const userInput = input
       setInput('')
       setIsLoading(true)
 
       try {
         const response = await axios.post('/api/ask', { 
-          message: userInput 
+          message: userInput,
+          history: messages
         }, {
           headers: {
             'Content-Type': 'application/json',

@@ -15,27 +15,40 @@ client = Groq(api_key=api_key)
 @app.route('/api/ask', methods=['POST'])
 def ask_bot():
     try:
-        # Get the message from the request
+        # Get the message and conversation history from the request
         data = request.get_json()
-        if not data or 'message' not in data:
-            return jsonify({"error": "No message provided"}), 400
+        if not data or 'message' not in data or 'history' not in data:
+            return jsonify({"error": "No message or history provided"}), 400
 
         user_message = data['message']
+        conversation_history = data['history']
+        
+        # Prepare the messages for the API call
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a French-speaking web development expert assistant. Provide helpful, detailed responses in French."
+            }
+        ]
+        
+        # Add conversation history
+        for msg in conversation_history:
+            messages.append({
+                "role": "user" if msg['type'] == 'user' else "assistant",
+                "content": msg['content']
+            })
+        
+        # Add the new user message
+        messages.append({
+            "role": "user",
+            "content": user_message
+        })
         
         # Create the chat completion with proper error handling
         try:
             chat_completion = client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a French-speaking web development expert assistant. Provide helpful, detailed responses in French."
-                    },
-                    {
-                        "role": "user",
-                        "content": user_message
-                    }
-                ],
-                model="mixtral-8x7b-32768",  # Updated model name
+                messages=messages,
+                model="mixtral-8x7b-32768",
                 temperature=0.7,
                 max_tokens=2048
             )
