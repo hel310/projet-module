@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -9,6 +9,11 @@ import axios from 'axios'
 
 export default function Create() {
   const [userName, setUserName] = useState(null)
+  const [messages, setMessages] = useState([])
+  const [input, setInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const chatContainerRef = useRef(null)
+  const inputRef = useRef(null)
 
   useEffect(() => {
     const storedUserName = localStorage.getItem('userName')
@@ -25,23 +30,45 @@ export default function Create() {
     return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
-  const [messages, setMessages] = useState([])
+  const saveMessagesToStorage = useCallback((messages) => {
+    if (userName) {
+      localStorage.setItem(`chatHistory_${userName}`, JSON.stringify(messages));
+    } else {
+      sessionStorage.setItem('tempChatHistory', JSON.stringify(messages));
+    }
+  }, [userName]);
+
+  const loadMessagesFromStorage = useCallback(() => {
+    if (userName) {
+      const savedMessages = localStorage.getItem(`chatHistory_${userName}`);
+      return savedMessages ? JSON.parse(savedMessages) : [];
+    } else {
+      const savedMessages = sessionStorage.getItem('tempChatHistory');
+      return savedMessages ? JSON.parse(savedMessages) : [];
+    }
+  }, [userName]);
 
   useEffect(() => {
-    setMessages([
-      { 
-        type: 'bot', 
-        content: userName 
-          ? `Bonjour ${userName} ! Je suis là pour vous aider à créer votre portfolio. Comment puis-je vous assister aujourd'hui ?`
-          : "Bonjour ! Je suis là pour vous aider à créer votre portfolio. Comment puis-je vous assister aujourd'hui ?"
-      }
-    ])
-  }, [userName])
+    const storedMessages = loadMessagesFromStorage();
+    if (storedMessages.length > 0) {
+      setMessages(storedMessages);
+    } else {
+      setMessages([
+        { 
+          type: 'bot', 
+          content: userName 
+            ? `Bonjour ${userName} ! Je suis là pour vous aider à créer votre portfolio. Comment puis-je vous assister aujourd'hui ?`
+            : "Bonjour ! Je suis là pour vous aider à créer votre portfolio. Comment puis-je vous assister aujourd'hui ? Votre conversation sera sauvegardée pour cette session, mais si vous souhaitez la conserver à long terme, n'oubliez pas de vous connecter."
+        }
+      ]);
+    }
+  }, [userName, loadMessagesFromStorage]);
 
-  const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const chatContainerRef = useRef(null)
-  const inputRef = useRef(null)
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveMessagesToStorage(messages);
+    }
+  }, [messages, saveMessagesToStorage]);
 
   const scrollToNewMessage = () => {
     if (chatContainerRef.current) {
@@ -66,13 +93,14 @@ export default function Create() {
 
   useEffect(() => {
     scrollToNewMessage()
-  }, [messages, userName])
+  }, [messages])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (input.trim()) {
       const newUserMessage = { type: 'user', content: input }
-      setMessages(prev => [...prev, newUserMessage])
+      const updatedMessages = [...messages, newUserMessage];
+      setMessages(updatedMessages);
       const userInput = input
       setInput('')
       setIsLoading(true)
@@ -80,7 +108,7 @@ export default function Create() {
       try {
         const response = await axios.post('/api/ask', { 
           message: userInput,
-          history: messages
+          history: updatedMessages
         }, {
           headers: {
             'Content-Type': 'application/json',
@@ -88,8 +116,10 @@ export default function Create() {
         })
 
         if (response.data && response.data.response) {
+          const newBotMessage = { type: 'bot', content: response.data.response };
           setMessages(prev => {
-            const newMessages = [...prev, { type: 'bot', content: response.data.response }];
+            const newMessages = [...prev, newBotMessage];
+            saveMessagesToStorage(newMessages);
             focusInput();
             return newMessages;
           });
@@ -98,10 +128,15 @@ export default function Create() {
         }
       } catch (error) {
         console.error('Error fetching bot response:', error)
-        setMessages(prev => [...prev, { 
-          type: 'bot', 
-          content: "Désolé, une erreur s'est produite. Veuillez réessayer." 
-        }])
+        setMessages(prev => {
+          const errorMessage = { 
+            type: 'bot', 
+            content: "Désolé, une erreur s'est produite. Veuillez réessayer." 
+          };
+          const newMessages = [...prev, errorMessage];
+          saveMessagesToStorage(newMessages);
+          return newMessages;
+        })
       } finally {
         setIsLoading(false)
       }
@@ -144,6 +179,19 @@ export default function Create() {
         >
           Créez votre portfolio avec notre assistant
         </motion.h1>
+        {!userName && (
+          <motion.div
+            className="text-center mb-4 p-2 bg-yellow-100 border border-yellow-300 rounded-md"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <p className="text-yellow-800">
+              Vous n'êtes pas connecté. Votre conversation sera sauvegardée pour cette session, mais sera perdue si vous fermez le site. 
+              <a href="/login" className="text-blue-600 hover:text-blue-800 ml-2 underline">Se connecter</a>
+            </p>
+          </motion.div>
+        )}
         <motion.div 
           className="max-w-3xl mx-auto bg-white bg-opacity-80 backdrop-filter backdrop-blur-lg shadow-lg rounded-lg overflow-hidden flex flex-col h-[calc(100vh-300px)]"
           initial={{ opacity: 0, y: 20 }}
@@ -230,42 +278,4 @@ export default function Create() {
     </div>
   )
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
